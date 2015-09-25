@@ -22,3 +22,5 @@ train.column.types <- c('integer',     # PassengerId
                         )
 test.column.types <- train.column.types[-2] # no survived column in test.csv
 
+train.raw <- readData(titanic.path, train.data.file, train.column.types, missing.types)
+
