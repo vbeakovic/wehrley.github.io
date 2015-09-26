@@ -31,3 +31,9 @@ df.infer <- test.raw
 ## exploring missing data
 require(Amelia)
 missmap(df.train, main = "Titanic Training Data - Missing Map", col = c("yellow", "black"), legend = FALSE)
+
+
+## Exploratory data analysis but using ggplot2
+age.barplot <- ggplot(df.train, aes(x = Survived)) + geom_bar(stat = "bin", fill = "black", colour = "black" ) + ggtitle("Survived (passenger fate)") + scale_y_continuous("") + scale_x_discrete("", labels = c("Perished", "Survived"))
+age.barplot
+
