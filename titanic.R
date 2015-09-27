@@ -101,4 +101,57 @@ getTitle <- function(data) {
 } 
 
 df.train$Title <- getTitle(df.train)
-str(df.train$Name)
+str(df.train$Title)
+unique(df.train$Title)
+
+options(digits = 5)
+require(Hmisc)
+bystats(df.train$Age, df.train$Title, fun = function(x) c(Mean = mean(x), Median = median(x)))
+
+# list of honorific titles with missing Age value(s) requiring imputation
+title.na.train <- c("Dr", "Master", "Mrs", "Miss", "Mr")
+
+# Impute median per honorific title
+imputeMedian <- function(impute.var, filter.var, var.levels) {
+  for (v in var.levels) {
+    impute.var[which(filter.var == v)] <- impute(impute.var[which(filter.var == v)])
+  }
+  return(impute.var)
+}
+
+df.train$Age[which(df.train$Title == "Dr")]
+
+df.train$Age <- imputeMedian(df.train$Age, df.train$Title, title.na.train)
+
+df.train$Age[which(df.train$Title == "Dr")]
+options(digits = 5)
+summary(df.train$Age)
+summary(df.train$Embarked)
+df.train$Embarked[which(is.na(df.train$Embarked))] <- 'S'
+
+summary(df.train$Fare)
+
+subset(df.train, Fare < 7)[order(subset(df.train, Fare < 7)$Fare, subset(df.train, Fare < 7)$Pclass), c("Age", "Title", "Pclass", "Fare")]
+df.train$Fare[which(df.train$Fare == 0)] <- NA
+df.train$Fare <- imputeMedian(df.train$Fare, df.train$Pclass, as.numeric(levels(df.train$Pclass)))
+
+df.train$Title <- factor(df.train$Title, c("Capt","Col","Major","Sir","Lady","Rev","Dr","Don","Jonkheer","the Countess","Mrs","Ms","Mr","Mme","Mlle","Miss","Master"))
+
+age.tile.boxplot <- ggplot(df.train, aes(x = Title, y = Age)) + labs(x = "Title", y = "Age") + labs(title = "Passenger Age by Title") + stat_boxplot(geom ='errorbar', coef = 1.5) + geom_boxplot()
+age.tile.boxplot
+
+# Function for assigning a new title value to old title(s)
+levels(df.train$Title)[18] <- "Noble"
+changeTitles <- function(data, old.titles, new.title) {
+  for (honorific in old.titles) {
+    data$Title[which(data$Title == honorific)] <- new.title
+  }
+  return(data$Title)
+}
+
+# Title consolidation
+df.train$Title <- changeTitles(df.train, c("Capt", "Col", "Don", "Dr", "Jonkheer", "Lady", "Major", "Rev", "Sir"), "Noble")
+df.train$Title <- changeTitles(df.train, c("the Countess", "Ms"), "Mrs")
+df.train$Title <- changeTitles(df.train, c("Mlle", "Mme"), "Miss")
+df.train$Title <- as.factor(df.train$Title)
+levels(df.train$Title)
