@@ -33,6 +33,7 @@ require(Amelia)
 missmap(df.train, main = "Titanic Training Data - Missing Map", col = c("yellow", "black"), legend = FALSE)
 
 
+require(ggplot2)
 ## Exploratory data analysis but using ggplot2
 age.barplot <- ggplot(df.train, aes(x = Survived)) + geom_bar(stat = "bin", fill = "black", colour = "black" ) + ggtitle("Survived (passenger fate)") + scale_y_continuous("") + scale_x_discrete("", labels = c("Perished", "Survived"))
 age.barplot
@@ -57,3 +58,17 @@ fare.hist
 
 embarked.barplot <- ggplot(df.train[!is.na(df.train$Embarked), ], aes(x = Embarked)) + geom_bar(stat = "bin", fill = "sienna", colour = "black" ) + ggtitle("Embarked (port of embarkation)") + scale_y_continuous("") + scale_x_discrete("", labels = c("Cherbourg", "Queenstown", "Southampton")) 
 embarked.barplot
+
+require(vcd)
+# Survival rate by passenger class
+mosaicplot(df.train$Pclass ~ df.train$Survived, main = "Passenger Fate by Traveling Class", shade = FALSE, color = TRUE, xlab = "Pclass", ylab = "Survived")
+
+# Survival rate by gender
+mosaicplot(df.train$Sex ~ df.train$Survived, main = "Passenger Fate by Gender", shade = FALSE, color = TRUE, xlab = "Sex", ylab = "Survived")
+
+# Passenger fate by age
+age.boxplot <- ggplot(df.train, aes(x = Survived, y = Age)) + labs(x = "Survived", y = "Age") + labs(title = "Passenger Fate by Age") + stat_boxplot(geom ='errorbar', coef = 1.5) + geom_boxplot()
+age.boxplot
+
+# Passenger Fate by Port of Embarkation
+mosaicplot(df.train$Embarked ~ df.train$Survived, main = "Passenger Fate by Port of Embarkation", shade = FALSE, color = TRUE, xlab = "Embarked", ylab = "Survived")
