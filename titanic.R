@@ -90,3 +90,15 @@ names(df.train)
 class.age.boxplot <- ggplot(df.train, aes(x = Pclass, y = Age)) + labs(x = "Pclass", y = "Age") + labs(title = "Passenger Traveling Class by Age") + stat_boxplot(geom ='errorbar', coef = 1.5) + geom_boxplot()
 class.age.boxplot
 head(df.train$Name, n = 10L)
+
+
+# Function for extracting honorific (i.e. title) from the Name feature
+getTitle <- function(data) {
+  title.dot.start <- regexpr("\\,[A-Z ]{1,20}\\.", data$Name, TRUE)
+  title.comma.end <- title.dot.start + attr(title.dot.start, "match.length")-1
+  data$Title <- substr(data$Name, title.dot.start+2, title.comma.end-1)
+  return(data$Title)
+} 
+
+df.train$Title <- getTitle(df.train)
+str(df.train$Name)
