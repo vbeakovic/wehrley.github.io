@@ -72,3 +72,21 @@ age.boxplot
 
 # Passenger Fate by Port of Embarkation
 mosaicplot(df.train$Embarked ~ df.train$Survived, main = "Passenger Fate by Port of Embarkation", shade = FALSE, color = TRUE, xlab = "Embarked", ylab = "Survived")
+
+require(corrgram)
+require(plyr)
+corrgram.data <- df.train
+corrgram.data$Survived <- as.numeric(corrgram.data$Survived)
+corrgram.data$Pclass <- as.numeric(corrgram.data$Pclass)
+corrgram.data$Embarked <- revalue(corrgram.data$Embarked, c("C" = 1, "Q" = 2, "S" = 3))
+corrgram.vars <- c("Survived", "Pclass", "Sex", "SibSp", "Parch", "Fare", "Embarked")
+corrgram(corrgram.data[ , corrgram.vars], order = FALSE, lower.panel = panel.ellipse, upper.panel = panel.pie, text.panel = panel.txt, main = "Titanic Training Data")
+
+
+# Imputation
+summary(df.train$Age)
+names(df.train)
+
+class.age.boxplot <- ggplot(df.train, aes(x = Pclass, y = Age)) + labs(x = "Pclass", y = "Age") + labs(title = "Passenger Traveling Class by Age") + stat_boxplot(geom ='errorbar', coef = 1.5) + geom_boxplot()
+class.age.boxplot
+head(df.train$Name, n = 10L)
