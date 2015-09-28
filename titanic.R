@@ -206,7 +206,7 @@ set.seed(23)
 training.rows <- createDataPartition(df.train$Survived, p = 0.8, list = FALSE)
 train.batch <- df.train.munged[training.rows,]
 test.batch <- df.train.munged[-training.rows,]
-
+essio
 Titanic.logit.1 <- glm(Fate ~ Sex + Class + Age + Family + Embarked + Fare, data = train.batch, family=binomial("logit"))
 Titanic.logit.1
 anova(Titanic.logit.1, test = "Chisq")
@@ -216,3 +216,75 @@ anova(Titanic.logit.2, test = "Chisq")
 
 Titanic.logit.3 <- glm(Fate ~ Sex + Class + Age + Family + Embarked, data = train.batch, family=binomial("logit"))
 anova(Titanic.logit.3, test = "Chisq")
+
+cv.ctrl <- trainControl(method = "repeatedcv", repeats = 3, summaryFunction = twoClassSummary, classProbs = TRUE)
+set.seed(35)
+glm.tune1 <- train(Fate ~ Sex + Class + Age + Family + Embarked, data = train.batch, method = "glm", metric = "ROC", trControl = cv.ctrl)
+glm.tune1
+summary(glm.tune1)
+
+
+set.seed(35)
+glm.tune2 <- train(Fate ~ Sex + Class + Age + Family + I(Embarked == "S"), data = train.batch, method = "glm", metric = "ROC", trControl = cv.ctrl)
+summary(glm.tune2)
+
+train.batch$Title <- droplevels(train.batch$Title)
+levels(train.batch$Title)
+glm.tune3 <- train(Fate ~ Sex + Class + Title + Age + Family + I(Embarked == "S"), data = train.batch, method = "glm", metric = "ROC", trControl = cv.ctrl)
+summary(glm.tune3)
+
+glm.tune4 <- train(Fate ~ Class + I(Title == "Mr") + I(Title == "Noble") + Age + Family + I(Embarked == "S"), data = train.batch, method = "glm", metric = "ROC", trControl = cv.ctrl)
+summary(glm.tune4)
+
+glm.tune5 <- train(Fate ~ Class + I(Title == "Mr") + I(Title == "Noble") + Age + Family + I(Embarked == "S") + I(Title == "Mr" & Class == "Third"), data = train.batch, method = "glm", metric = "ROC", trControl = cv.ctrl)
+summary(glm.tune5)
+
+
+# Boosting
+ada.grid <- expand.grid(.iter = c(50, 100), .maxdepth = c(4, 8), .nu = c(0.1, 1))
+set.seed(35)
+ada.tune <- train(Fate ~ Sex + Class + Age + Family + Embarked, data = train.batch, method = "ada", metric = "ROC", tuneGrid = ada.grid, trControl = cv.ctrl)
+ada.tune
+
+# Random Forest
+rf.grid <- data.frame(.mtry = c(2, 3))
+set.seed(35)
+rf.tune <- train(Fate ~ Sex + Class + Age + Family + Embarked, data = train.batch, method = "rf", metric = "ROC", tuneGrid = rf.grid, trControl = cv.ctrl)
+rf.tune
+
+# Support vector machine
+svm.tune <- train(Fate ~ Sex + Class + Age + Family + Embarked, data = train.batch, method = "svmRadial", tuneLength = 9, preProcess = c("center", "scale"), metric = "ROC", trControl = cv.ctrl)
+svm.tune
+
+test.batch$Title <- droplevels(test.batch$Title)
+levels(test.batch$Title)
+glm.pred <- predict(glm.tune5, test.batch)
+confusionMatrix(glm.pred, test.batch$Fate)
+
+ada.pred <- predict(ada.tune, test.batch)
+confusionMatrix(ada.pred, test.batch$Fate)
+
+rf.pred <- predict(rf.tune, test.batch)
+confusionMatrix(rf.pred, test.batch$Fate)
+
+# ROC curves
+require(pROC)
+glm.probs <- predict(glm.tune5, test.batch, type = "prob")
+glm.ROC <- roc(response = test.batch$Fate, predictor = glm.probs$Survived, levels = levels(test.batch$Fate)) 
+plot(glm.ROC, type = "S")
+
+ada.probs <- predict(ada.tune, test.batch, type = "prob")
+ada.ROC <- roc(response = test.batch$Fate, predictor = ada.probs$Survived, levels = levels(test.batch$Fate)) 
+plot(ada.ROC, add = TRUE, col = "green")
+
+rf.probs <- predict(rf.tune, test.batch, type = "prob")
+rf.ROC <- roc(response = test.batch$Fate, predictor = rf.probs$Survived, levels = levels(test.batch$Fate)) 
+plot(ada.ROC, add = TRUE, col = "red")
+
+svm.probs <- predict(svm.tune, test.batch, type = "prob")
+svm.ROC <- roc(response = test.batch$Fate, predictor = svm.probs$Survived, levels = levels(test.batch$Fate)) 
+plot(svm.ROC, add = TRUE, col = "blue")
+
+
+cv.values <- resamples(list(Logit = glm.tune5, Ada = ada.tune, RF = rf.tune, SVM = svm.tune))
+dotplot(cv.values, metric = "ROC")
