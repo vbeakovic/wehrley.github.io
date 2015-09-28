@@ -155,3 +155,64 @@ df.train$Title <- changeTitles(df.train, c("the Countess", "Ms"), "Mrs")
 df.train$Title <- changeTitles(df.train, c("Mlle", "Mme"), "Miss")
 df.train$Title <- as.factor(df.train$Title)
 levels(df.train$Title)
+
+# Feature engineering, Title already done
+require(plyr)
+require(stringr)
+# test a character as an EVEN single digit
+isEven <- function(x) x %in% c("0", "2", "4", "6", "8")
+isOdd <- function(x) x %in% c("1", "3", "5", "7", "9")
+
+# function to add features to training or test data frames
+featureEngrg <- function(data) {
+  data$Fate <- data$Survived
+  data$Fate <- revalue(data$Fate, c("1" = "Survived", "0" = "Perished"))
+
+  data$Boat.dibs <- "No"
+  data$Boat.dibs[which(data$Sex == "female" | data$Age < 15)] <- "Yes"
+  data$Boat.dibs <- as.factor(data$Boat.dibs)
+  
+  data$Family <- data$SibSp + data$Parch
+  
+  data$Fare.pp <- data$Fare / (data$Family + 1)
+  
+  data$Class <- data$Pclass
+  data$Class <- revalue(data$Class, c("1" = "First", "2" = "Second", "3" = "Third"))
+  
+  data$Deck <- substring(data$Cabin, 1, 1)
+  data$Deck[which(is.na(data$Deck))] <- "UNK"
+  data$Deck <- as.factor(data$Deck)
+  
+  data$cabin.last.digit <- str_sub(data$Cabin, -1)
+  data$Side <- "UNK"
+  data$Side[which(isEven(data$cabin.last.digit))] <- "port"
+  data$Side[which(isOdd(data$cabin.last.digit))] <- "starboard"
+  data$Side <- as.factor(data$Side)
+  data$cabin.last.digit <- NULL
+  return(data)
+}
+
+
+df.rm <- featureEngrg(df.train)
+names(df.rm)
+str(df.rm)
+summary(df.rm)
+
+train.keeps <- c("Fate", "Sex", "Boat.dibs", "Age", "Title", "Class", "Deck", "Side", "Fare", "Fare.pp", "Embarked", "Family")
+df.train.munged <- df.rm[train.keeps]
+
+require(caret)
+set.seed(23)
+training.rows <- createDataPartition(df.train$Survived, p = 0.8, list = FALSE)
+train.batch <- df.train.munged[training.rows,]
+test.batch <- df.train.munged[-training.rows,]
+
+Titanic.logit.1 <- glm(Fate ~ Sex + Class + Age + Family + Embarked + Fare, data = train.batch, family=binomial("logit"))
+Titanic.logit.1
+anova(Titanic.logit.1, test = "Chisq")
+
+Titanic.logit.2 <- glm(Fate ~ Sex + Class + Age + Family + Embarked + Fare.pp, data = train.batch, family=binomial("logit"))
+anova(Titanic.logit.2, test = "Chisq")
+
+Titanic.logit.3 <- glm(Fate ~ Sex + Class + Age + Family + Embarked, data = train.batch, family=binomial("logit"))
+anova(Titanic.logit.3, test = "Chisq")
