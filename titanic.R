@@ -133,6 +133,7 @@ summary(df.train$Fare)
 
 subset(df.train, Fare < 7)[order(subset(df.train, Fare < 7)$Fare, subset(df.train, Fare < 7)$Pclass), c("Age", "Title", "Pclass", "Fare")]
 df.train$Fare[which(df.train$Fare == 0)] <- NA
+
 df.train$Fare <- imputeMedian(df.train$Fare, df.train$Pclass, as.numeric(levels(df.train$Pclass)))
 
 df.train$Title <- factor(df.train$Title, c("Capt","Col","Major","Sir","Lady","Rev","Dr","Don","Jonkheer","the Countess","Mrs","Ms","Mr","Mme","Mlle","Miss","Master"))
@@ -236,6 +237,7 @@ summary(glm.tune3)
 glm.tune4 <- train(Fate ~ Class + I(Title == "Mr") + I(Title == "Noble") + Age + Family + I(Embarked == "S"), data = train.batch, method = "glm", metric = "ROC", trControl = cv.ctrl)
 summary(glm.tune4)
 
+set.seed(35)
 glm.tune5 <- train(Fate ~ Class + I(Title == "Mr") + I(Title == "Noble") + Age + Family + I(Embarked == "S") + I(Title == "Mr" & Class == "Third"), data = train.batch, method = "glm", metric = "ROC", trControl = cv.ctrl)
 summary(glm.tune5)
 
@@ -288,3 +290,43 @@ plot(svm.ROC, add = TRUE, col = "blue")
 
 cv.values <- resamples(list(Logit = glm.tune5, Ada = ada.tune, RF = rf.tune, SVM = svm.tune))
 dotplot(cv.values, metric = "ROC")
+
+
+## Preparation of Kaggle submittal
+df.infer$Title <- getTitle(df.infer)
+
+
+## Impute missing Age values
+df.infer$Title <- changeTitles(df.infer, c("Dona", "Ms"), "Mrs")
+titles.na.test <- c("Master", "Mrs", "Miss", "Mr")
+df.infer$Age <- imputeMedian(df.infer$Age, df.infer$Title, titles.na.test)
+
+## Consolidate titles
+df.infer$Title <- changeTitles(df.infer, c("Col", "Dr", "Rev"), "Noble")
+df.infer$Title <- changeTitles(df.infer, c("Mlle", "Mme"), "Miss")
+df.infer$Title <- as.factor(df.infer$Title)
+levels(df.infer$Title)
+
+
+## Impute missing fares
+df.infer$Fare[which(df.infer$Fare == 0)] <- NA
+df.infer$Fare <- imputeMedian(df.infer$Fare, df.infer$Pclass, as.numeric(levels(df.infer$Pclass)))
+
+# add the other features
+df.infer <- featureEngrg(df.infer)
+str(df.infer)
+
+## data prepped for casting predictions
+test.keeps <- train.keeps[-1]
+pred.these <- df.infer[test.keeps]
+
+## use the logistic regression model to generate predictions
+Survived <- predict(ada.pred, newdata = pred.these)
+
+## reformat predictions to 0 or 1 and link to PassengerId in data frame
+Survived <- revalue(Survived, c("Survived" = 1, "Perished" = 0))
+predictions <- as.data.frame(Survived)
+predictions$PassengerId <- df.infer$PassengerId
+
+# write predictions to csv file for submission to Kaggle
+write.csv(predictions[, c("PassengerId", "Survived")], file = "Titanic_predictions.csv", row.names = FALSE, quote = FALSE)
